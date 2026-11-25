@@ -1,209 +1,258 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TREVIA CCP | Banca Personal</title>
+// ELEMENTOS DEL HTML
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+const formulario = document.getElementById("loanForm");
+const campoNombre = document.getElementById("nombre");
+const campoTipo = document.getElementById("tipoPrestamo");
+const campoMonto = document.getElementById("monto");
+const campoInteres = document.getElementById("interes");
+const campoPlazo = document.getElementById("plazo");
 
-  <link rel="stylesheet" href="estilos.css">
-</head>
+const resultado = document.getElementById("resultado");
+const botonGuardar = document.getElementById("guardar");
+const tablaHistorial = document.getElementById("tablaHistorial");
+const botonLimpiarHistorial = document.getElementById("limpiarHistorial");
 
-<body>
+let simulacionActual = null;
 
-  <header class="encabezado">
-    <div class="logo">
-      <span class="logo-nombre">TREVIA <span>CCP</span></span>
-      <small>BANCA PERSONAL</small>
-    </div>
 
-    <nav>
-      <a href="#inicio">Inicio</a>
-      <a href="#simulador">Simulador</a>
-      <a href="#historial">Historial</a>
-      <a href="#informacion">Información</a>
-    </nav>
-  </header>
+// FORMATO DE PESOS ARGENTINOS
 
-  <main>
-    <section class="portada" id="inicio">
-      <div class="portada-contenido">
-        <p class="etiqueta">SOLUCIONES FINANCIERAS</p>
-        <h1>Tu futuro comienza con una buena decisión.</h1>
-        <p class="descripcion">
-          En TREVIA CCP te ofrecemos una herramienta sencilla
-          para simular préstamos y conocer tus posibilidades
-          de financiación.
-        </p>
-        <a href="#simulador" class="boton-principal">Simular préstamo</a>
-      </div>
+function formatoDinero(valor) {
+  return new Intl.NumberFormat("es-AR", {
+    style: "currency",
+    currency: "ARS",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(valor);
+}
 
-      <div class="portada-decoracion">
-        <div class="tarjeta-banco">
-          <span>TREVIA CCP</span>
-          <div class="chip"></div>
-          <p>FINANCIAL SERVICES</p>
-        </div>
-      </div>
-    </section>
 
-    <section class="seccion-simulador" id="simulador">
-      <div class="titulo-seccion">
-        <p class="etiqueta">PLANIFICÁ TUS FINANZAS</p>
-        <h2>Simulador de préstamos</h2>
-        <p>Completá los datos y conocé el valor estimado de tus cuotas.</p>
-      </div>
+// TASAS DE INTERÉS MENSUALES SEGÚN EL MONTO
 
-      <div class="contenedor-simulador">
-        <form id="loanForm">
+function calcularTasa(monto) {
+  if (monto <= 100000) {
+    return 5;
+  } else if (monto <= 300000) {
+    return 4;
+  } else if (monto <= 500000) {
+    return 3;
+  } else {
+    return 2;
+  }
+}
 
-          <div class="campo">
-            <label for="nombre">Nombre del cliente</label>
-            <input type="text" id="nombre" placeholder="Ingresá tu nombre" required>
-          </div>
 
-          <div class="campo">
-            <label for="tipoPrestamo">Tipo de préstamo</label>
-            <select id="tipoPrestamo" required>
-              <option value="">Seleccioná una opción</option>
-              <option value="Personal">Personal</option>
-              <option value="Consumo">Consumo</option>
-              <option value="Estudiantil">Estudiantil</option>
-              <option value="Emprendimiento">Emprendimiento</option>
-            </select>
-          </div>
+// ACTUALIZAR LA TASA AUTOMÁTICAMENTE
 
-          <div class="campo">
-            <label for="monto">Monto solicitado (ARS)</label>
-            <input type="number" id="monto" min="1" placeholder="Ej: 250000" required>
-          </div>
+function actualizarTasa() {
+  const monto = Number(campoMonto.value);
 
-          <div class="campo">
-            <label for="interes">Tasa de interés mensual</label>
-            <input type="text" id="interes" value="80%" readonly>
-            <small>La tasa de interés mensual es fija y se calcula automáticamente.</small>
-          </div>
+  if (monto > 0) {
+    const tasa = calcularTasa(monto);
+    campoInteres.value = tasa + "% mensual";
+  } else {
+    campoInteres.value = "Se calcula automáticamente";
+  }
+}
 
-          <div class="campo">
-            <label for="plazo">Plazo de devolución</label>
-            <select id="plazo" required>
-              <option value="">Seleccioná los meses</option>
-              <option value="6">6 meses</option>
-              <option value="12">12 meses</option>
-              <option value="18">18 meses</option>
-              <option value="24">24 meses</option>
-              <option value="36">36 meses</option>
-              <option value="48">48 meses</option>
-            </select>
-          </div>
 
-          <div class="botones-formulario">
-            <button type="submit" class="boton-principal">Calcular préstamo</button>
-            <button type="reset" class="boton-secundario">Limpiar</button>
-          </div>
-        </form>
+// CALCULAR LA CUOTA CON SISTEMA FRANCÉS
 
-        <div class="resultado" id="resultado" hidden>
-          <p class="etiqueta">RESULTADO DE LA SIMULACIÓN</p>
-          <h3>Tu préstamo estimado</h3>
+function calcularCuota(monto, tasa, meses) {
+  const tasaMensual = tasa / 100;
 
-          <div class="cuota-principal">
-            <span>Cuota mensual aproximada</span>
-            <strong id="cuota">$ 0</strong>
-          </div>
+  if (tasaMensual === 0) {
+    return monto / meses;
+  }
 
-          <div class="detalle-resultados">
-            <div>
-              <span>Monto solicitado</span>
-              <strong id="resultadoMonto">$ 0</strong>
-            </div>
-            <div>
-              <span>Intereses totales</span>
-              <strong id="resultadoInteres">$ 0</strong>
-            </div>
-            <div>
-              <span>Total a devolver</span>
-              <strong id="resultadoTotal">$ 0</strong>
-            </div>
-            <div>
-              <span>Tasa mensual</span>
-              <strong id="resultadoTasa">80%</strong>
-            </div>
-          </div>
+  const factor = Math.pow(1 + tasaMensual, meses);
 
-          <button type="button" id="guardar" class="boton-principal boton-guardar">
-            Guardar simulación
-          </button>
+  const cuota =
+    monto * (tasaMensual * factor) / (factor - 1);
 
-          <p class="aviso">
-            Simulación orientativa con fines educativos.
-            No representa una oferta financiera real.
-          </p>
-        </div>
-      </div>
-    </section>
+  return cuota;
+}
 
-    <section class="seccion-historial" id="historial">
-      <div class="titulo-seccion">
-        <p class="etiqueta">REGISTROS</p>
-        <h2>Historial de simulaciones</h2>
-        <p>Consultá las simulaciones guardadas.</p>
-      </div>
 
-      <div class="tabla-contenedor">
-        <table>
-          <thead>
-            <tr>
-              <th>Cliente</th>
-              <th>Tipo</th>
-              <th>Monto</th>
-              <th>Tasa mensual</th>
-              <th>Plazo</th>
-              <th>Cuota</th>
-              <th>Fecha</th>
-            </tr>
-          </thead>
-          <tbody id="tablaHistorial">
-            <tr>
-              <td colspan="7" class="sin-registros">
-                Todavía no hay simulaciones guardadas.
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+// MOSTRAR RESULTADOS
 
-      <button type="button" id="limpiarHistorial" class="boton-secundario">
-        Eliminar historial
-      </button>
-    </section>
+formulario.addEventListener("submit", function(event) {
+  event.preventDefault();
 
-    <section class="informacion" id="informacion">
-      <p class="etiqueta">TREVIA CCP</p>
-      <h2>Información del simulador</h2>
-      <p>
-        Esta herramienta permite calcular cuotas estimadas de préstamos
-        utilizando el sistema de amortización francés, que mantiene una
-        cuota mensual fija durante el plazo seleccionado.
-      </p>
-      <p>
-        La tasa de interés mensual utilizada es del 80%,
-        definida para este proyecto educativo.
-      </p>
-    </section>
-  </main>
+  const nombre = campoNombre.value.trim();
+  const tipo = campoTipo.value;
+  const monto = Number(campoMonto.value);
+  const meses = Number(campoPlazo.value);
 
-  <footer>
-    <div class="logo">
-      <span class="logo-nombre">TREVIA <span>CCP</span></span>
-      <small>BANCA PERSONAL</small>
-    </div>
-    <p>© 2026 TREVIA CCP. Proyecto educativo.</p>
-  </footer>
+  if (!nombre || !tipo || monto <= 0 || meses <= 0) {
+    alert("Por favor, completá todos los campos correctamente.");
+    return;
+  }
 
-  <script src="script.js"></script>
-</body>
-</html>
+  const tasa = calcularTasa(monto);
+  const cuota = calcularCuota(monto, tasa, meses);
+
+  const total = cuota * meses;
+  const intereses = total - monto;
+
+  simulacionActual = {
+    nombre: nombre,
+    tipo: tipo,
+    monto: monto,
+    interes: tasa,
+    meses: meses,
+    cuota: cuota,
+    total: total,
+    intereses: intereses,
+    fecha: new Date().toLocaleDateString("es-AR")
+  };
+
+  document.getElementById("cuota").textContent =
+    formatoDinero(cuota);
+
+  document.getElementById("resultadoMonto").textContent =
+    formatoDinero(monto);
+
+  document.getElementById("resultadoInteres").textContent =
+    formatoDinero(intereses);
+
+  document.getElementById("resultadoTotal").textContent =
+    formatoDinero(total);
+
+  document.getElementById("resultadoTasa").textContent =
+    tasa + "% mensual";
+
+  resultado.hidden = false;
+
+  resultado.scrollIntoView({
+    behavior: "smooth",
+    block: "center"
+  });
+});
+
+
+// GUARDAR SIMULACIÓN EN EL HISTORIAL
+
+botonGuardar.addEventListener("click", function() {
+  if (!simulacionActual) {
+    alert("Primero tenés que calcular un préstamo.");
+    return;
+  }
+
+  let historial = JSON.parse(
+    localStorage.getItem("trevia_historial") || "[]"
+  );
+
+  historial.push(simulacionActual);
+
+  localStorage.setItem(
+    "trevia_historial",
+    JSON.stringify(historial)
+  );
+
+  alert("La simulación se guardó correctamente.");
+
+  mostrarHistorial();
+
+  simulacionActual = null;
+  resultado.hidden = true;
+});
+
+
+// MOSTRAR HISTORIAL
+
+function mostrarHistorial() {
+  const historial = JSON.parse(
+    localStorage.getItem("trevia_historial") || "[]"
+  );
+
+  tablaHistorial.innerHTML = "";
+
+  if (historial.length === 0) {
+    tablaHistorial.innerHTML = `
+      <tr>
+        <td colspan="7" class="sin-registros">
+          Todavía no hay simulaciones guardadas.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  historial.forEach(function(item) {
+    const fila = document.createElement("tr");
+
+    const datos = [
+      item.nombre || "—",
+      item.tipo || "—",
+      formatoDinero(Number(item.monto) || 0),
+      item.interes != null ? item.interes + "% mensual" : "—",
+      (item.meses || "—") + " meses",
+      formatoDinero(Number(item.cuota) || 0),
+      item.fecha || "—"
+    ];
+
+    datos.forEach(function(dato) {
+      const celda = document.createElement("td");
+      celda.textContent = dato;
+      fila.appendChild(celda);
+    });
+
+    tablaHistorial.appendChild(fila);
+  });
+}
+
+
+// ELIMINAR HISTORIAL
+
+botonLimpiarHistorial.addEventListener("click", function() {
+  const confirmar = confirm(
+    "¿Estás segura de que querés eliminar todo el historial?"
+  );
+
+  if (confirmar) {
+    localStorage.removeItem("trevia_historial");
+    mostrarHistorial();
+  }
+});
+
+
+// ACTUALIZAR TASA CUANDO CAMBIA EL MONTO
+
+campoMonto.addEventListener("input", function() {
+  actualizarTasa();
+  simulacionActual = null;
+  resultado.hidden = true;
+});
+
+
+// INVALIDAR RESULTADO SI CAMBIAN OTROS DATOS
+
+[campoNombre, campoTipo, campoPlazo].forEach(function(campo) {
+  campo.addEventListener("input", function() {
+    simulacionActual = null;
+    resultado.hidden = true;
+  });
+
+  campo.addEventListener("change", function() {
+    simulacionActual = null;
+    resultado.hidden = true;
+  });
+});
+
+
+// LIMPIAR FORMULARIO
+
+formulario.addEventListener("reset", function() {
+  simulacionActual = null;
+  resultado.hidden = true;
+
+  setTimeout(function() {
+    campoInteres.value = "Se calcula automáticamente";
+  }, 0);
+});
+
+
+// CARGAR HISTORIAL AL ABRIR LA PÁGINA
+
+mostrarHistorial();
